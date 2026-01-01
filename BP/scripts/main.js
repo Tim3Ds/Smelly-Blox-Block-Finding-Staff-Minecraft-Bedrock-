@@ -4,6 +4,7 @@ import { ActionFormData, ModalFormData } from "@minecraft/server-ui";
 // --- Configuration ---
 const SCAN_INTERVAL_TICKS = 10;
 const PARTICLES_PER_FLOW = 5; // How many dots in the line
+const STAFF_PREFIX = "smellyblox:smelly_staff_";
 
 // Map staff color names to vanilla particles
 const PARTICLE_MAP = {
@@ -57,8 +58,8 @@ function getHoldingStaffColor(player) {
     const off = equipment.getEquipment(EquipmentSlot.Offhand);
 
     const check = (item) => {
-        if (item && item.typeId.startsWith("smellyblox:smelly_staff_")) {
-            return item.typeId.replace("smellyblox:smelly_staff_", "");
+        if (item && item.typeId.startsWith(STAFF_PREFIX)) {
+            return item.typeId.replace(STAFF_PREFIX, "");
         }
         return null;
     };
@@ -70,106 +71,156 @@ function getHoldingStaffColor(player) {
 
 async function showMainMenu(player) {
     const config = getConfig(player);
-    const form = new ActionFormData()
-        .title("Smelly Blox Scanner")
-        .body(`Status: ${config.active ? "§aActive" : "§cInactive"}\nTarget: ${config.target}`)
-        .button(config.active ? "Stop Scanning" : "Start Scanning")
-        .button("Select Target Block")
-        .button("Settings");
-
-    // Check Offhand Logic
     const equipment = player.getComponent("equippable");
     const offhandItem = equipment.getEquipment(EquipmentSlot.Offhand);
     const mainhandItem = equipment.getEquipment(EquipmentSlot.Mainhand);
-    const isOffhandEmpty = !offhandItem || offhandItem.typeId === "minecraft:air";
-    const isHoldingStaff = mainhandItem && mainhandItem.typeId.startsWith("smellyblox:smelly_staff_");
 
-    if (isHoldingStaff) {
-        if (isOffhandEmpty) {
-            form.button("Move Staff to Offhand");
-        } else {
-            // "Disabled" button visual hack or just omit/warn
-            // ActionFormData doesn't support disabled buttons, so we add a locked icon or warning text
-            form.button("§7[Locked] Offhand Full");
+    const isMainStaff = mainhandItem && mainhandItem.typeId.startsWith(STAFF_PREFIX);
+    const isOffStaff = offhandItem && offhandItem.typeId.startsWith(STAFF_PREFIX);
+    const isOffhandEmpty = !offhandItem || offhandItem.typeId === "minecraft:air";
+    const isMainhandEmpty = !mainhandItem || mainhandItem.typeId === "minecraft:air";
+
+    const form = new ModalFormData()
+        .title("Smelly Blox Scanner")
+        .label(`§6Target: §r${config.target}`)
+        .toggle("§eChange Target Block?", false)
+        .slider("Scan Radius", 1, 16, 1, config.radius);
+
+    // Swap Switch Logic
+    let swapLabel = "Swap to Off Hand";
+    let swapDisabled = false;
+    let initialSwapValue = !!isOffStaff;
+
+    if (isMainStaff) {
+        if (!isOffhandEmpty) {
+            swapLabel = "§7Swap to Off Hand\n§cHand is NOT Empty";
+            swapDisabled = true;
+        }
+    } else if (isOffStaff) {
+        swapLabel = "Swap to Main Hand";
+        if (!isMainhandEmpty) {
+            swapLabel = "§7Swap to Main Hand\n§cHand is NOT Empty";
+            swapDisabled = true;
         }
     }
 
-    const response = await form.show(player);
-    if (response.canceled) return;
+    form.toggle(swapLabel, initialSwapValue);
 
-    switch (response.selection) {
-        case 0: // Toggle
-            config.active = !config.active;
-            player.sendMessage(`§e[Smelly Blox] Scanner ${config.active ? "enabled" : "disabled"}.`);
-            break;
-        case 1: // Select Block
-            showFilterSelection(player);
-            break;
-        case 2: // Settings
-            showSettings(player);
-            break;
-        case 3: // Move to Offhand OR Locked
-            if (isHoldingStaff && isOffhandEmpty) {
-                equipment.setEquipment(EquipmentSlot.Offhand, mainhandItem);
-                equipment.setEquipment(EquipmentSlot.Mainhand, undefined);
-                player.sendMessage("§aStaff moved to offhand.");
-            } else if (isHoldingStaff && !isOffhandEmpty) {
-                player.sendMessage("§cError: Offhand must be empty to move the staff.");
-            }
-            break;
-    }
-}
-
-async function showFilterSelection(player) {
-    const config = getConfig(player);
-    const categories = Object.keys(BLOCK_CATEGORIES);
-
-    const form = new ActionFormData()
-        .title("Select Category")
-        .body("Choose a block category to filter results.");
-
-    categories.forEach(c => form.button(c));
+    // Active Status Switch (Bottom)
+    form.toggle(config.active ? "§aScanner Active" : "§cScanner Inactive", config.active);
 
     const res = await form.show(player);
     if (res.canceled) return;
 
-    const selectedCategory = categories[res.selection];
-    config.filter = selectedCategory;
-    showBlockSelection(player, selectedCategory);
-}
+    const [changeTarget, radius, swapVal, active] = res.formValues;
 
-async function showBlockSelection(player, category) {
-    const config = getConfig(player);
-    let blocks = BLOCK_CATEGORIES[category];
+    // Apply Settings
+    config.radius = radius;
+    config.active = active;
 
-    // If 'All' or empty, we basically just show a curated common list because "All blocks" is too big.
-    // For this prototype, 'All' will be a fallback list.
-    if (category === "All" || !blocks) {
-        blocks = [...BLOCK_CATEGORIES["Ores"], ...BLOCK_CATEGORIES["Logs"], ...BLOCK_CATEGORIES["Stones"]];
+    // Process Swap
+    if (!swapDisabled) {
+        if (isMainStaff && swapVal === true) {
+            equipment.setEquipment(EquipmentSlot.Offhand, mainhandItem);
+            equipment.setEquipment(EquipmentSlot.Mainhand, undefined);
+            player.sendMessage("§aStaff swapped to off hand.");
+        } else if (isOffStaff && swapVal === false) {
+            equipment.setEquipment(EquipmentSlot.Mainhand, offhandItem);
+            equipment.setEquipment(EquipmentSlot.Offhand, undefined);
+            player.sendMessage("§aStaff swapped back to main hand.");
+        }
     }
 
-    const form = new ModalFormData()
-        .title(`Select ${category}`)
-        .dropdown("Choose Block", blocks, 0);
-
-    const res = await form.show(player);
-    if (res.canceled) return;
-
-    config.target = blocks[res.formValues[0]];
-    player.sendMessage(`§e[Smelly Blox] Target set to: ${config.target}`);
+    if (changeTarget) {
+        showFilterSelection(player);
+    } else {
+        player.sendMessage("§e[Smelly Blox] Settings Applied.");
+    }
 }
 
-async function showSettings(player) {
+async function showRadiusSettings(player) {
     const config = getConfig(player);
     const form = new ModalFormData()
-        .title("Scanner Settings")
+        .title("Radius Settings")
         .slider("Scan Radius", 1, 16, 1, config.radius);
 
     const res = await form.show(player);
-    if (res.canceled) return;
+    if (res.canceled) {
+        showMainMenu(player);
+        return;
+    }
 
     config.radius = res.formValues[0];
     player.sendMessage(`§e[Smelly Blox] Radius set to: ${config.radius}`);
+    showMainMenu(player); // Loop back
+}
+
+async function showFilterSelection(player) {
+    const categories = Object.keys(BLOCK_CATEGORIES);
+    const form = new ModalFormData()
+        .title("Block Browser")
+        .dropdown("Category", categories, 0)
+        .textField("Search Block Name", "e.g. diamond");
+
+    const res = await form.show(player);
+    if (res.canceled) {
+        showMainMenu(player);
+        return;
+    }
+
+    const category = categories[res.formValues[0]];
+    const search = res.formValues[1].toLowerCase();
+    showBlockSelection(player, category, search);
+}
+
+async function showBlockSelection(player, category, search = "") {
+    const config = getConfig(player);
+    let blocks = [];
+
+    if (category === "All") {
+        // Collect all blocks from all categories
+        blocks = Object.values(BLOCK_CATEGORIES).flat();
+    } else {
+        blocks = BLOCK_CATEGORIES[category] || [];
+    }
+
+    // Filter by search string
+    if (search) {
+        blocks = blocks.filter(b => b.toLowerCase().includes(search));
+    }
+
+    // Remove duplicates (especially for "All")
+    blocks = [...new Set(blocks)];
+
+    const form = new ActionFormData()
+        .title(`Results: ${category}`)
+        .body(search ? `Filtering by: "${search}"` : "Showing all blocks in category.");
+
+    form.button("§8< Back to Filter");
+
+    if (blocks.length === 0) {
+        form.body("§cNo blocks found matching your criteria.");
+    } else {
+        blocks.forEach(b => {
+            const shortName = b.replace("minecraft:", "").replace(/_/g, " ");
+            form.button(shortName);
+        });
+    }
+
+    const res = await form.show(player);
+    if (res.canceled) {
+        showMainMenu(player);
+        return;
+    }
+
+    if (res.selection === 0) {
+        showFilterSelection(player);
+        return;
+    }
+
+    config.target = blocks[res.selection - 1];
+    player.sendMessage(`§e[Smelly Blox] Target set to: ${config.target}`);
+    showMainMenu(player); // Return to main menu
 }
 
 // --- Event Listeners ---
