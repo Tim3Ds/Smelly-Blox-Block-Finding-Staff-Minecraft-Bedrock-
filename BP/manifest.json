@@ -4,21 +4,37 @@
     "name": "Smelly Blox Behavior",
     "description": "Behavior pack for scanner staff",
     "uuid": "7a354f15-8463-4672-9844-48f80459325c",
-    "version": [1, 0, 0],
-    "min_engine_version": [1, 21, 0]
+    "version": [
+      0,
+      0,
+      2
+    ],
+    "min_engine_version": [
+      1,
+      21,
+      0
+    ]
   },
   "modules": [
     {
       "type": "data",
       "uuid": "402030f8-8422-488f-a78c-0235334c919d",
-      "version": [1, 0, 0]
+      "version": [
+        1,
+        0,
+        0
+      ]
     },
     {
       "type": "script",
       "language": "javascript",
       "uuid": "e98e8736-2580-4547-8149-16584281313e",
       "entry": "scripts/main.js",
-      "version": [1, 0, 0]
+      "version": [
+        1,
+        0,
+        0
+      ]
     }
   ],
   "dependencies": [

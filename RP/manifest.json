@@ -5,9 +5,9 @@
         "description": "Resource pack for scanner staff",
         "uuid": "aa238472-8433-4158-9442-99882218413a",
         "version": [
-            1,
             0,
-            0
+            0,
+            2
         ],
         "min_engine_version": [
             1,
@@ -20,9 +20,9 @@
             "type": "resources",
             "uuid": "b83320f8-8422-488f-a78c-0235334c912a",
             "version": [
-                1,
                 0,
-                0
+                0,
+                2
             ]
         }
     ],
@@ -30,9 +30,9 @@
         {
             "uuid": "7a354f15-8463-4672-9844-48f80459325c",
             "version": [
-                1,
                 0,
-                0
+                0,
+                2
             ]
         }
     ]
