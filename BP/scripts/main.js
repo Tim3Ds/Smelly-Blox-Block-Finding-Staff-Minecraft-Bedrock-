@@ -3,7 +3,8 @@ import { ActionFormData, ModalFormData } from "@minecraft/server-ui";
 
 // --- Configuration ---
 const SCAN_INTERVAL_TICKS = 10;
-const PARTICLES_PER_FLOW = 5; // How many dots in the line
+// particles per block line (higher => smoother beam)
+const PARTICLES_PER_FLOW = 20;
 const STAFF_PREFIX = "smellyblox:smelly_staff_";
 
 // Map staff color names to vanilla particles
@@ -53,18 +54,22 @@ function getConfig(player) {
 
 // --- Utils ---
 function getHoldingStaffColor(player) {
-    const equipment = player.getComponent("equippable");
-    const main = equipment.getEquipment(EquipmentSlot.Mainhand);
-    const off = equipment.getEquipment(EquipmentSlot.Offhand);
+    try {
+        const equipment = player.getComponent("equippable");
+        const main = equipment.getEquipment(EquipmentSlot.Mainhand);
+        const off = equipment.getEquipment(EquipmentSlot.Offhand);
 
-    const check = (item) => {
-        if (item && item.typeId.startsWith(STAFF_PREFIX)) {
-            return item.typeId.replace(STAFF_PREFIX, "");
-        }
+        const check = (item) => {
+            if (item && item.typeId && item.typeId.startsWith(STAFF_PREFIX)) {
+                return item.typeId.replace(STAFF_PREFIX, "");
+            }
+            return null;
+        };
+
+        return check(main) || check(off);
+    } catch (e) {
         return null;
-    };
-
-    return check(main) || check(off);
+    }
 }
 
 // --- UI System ---
@@ -231,6 +236,26 @@ world.afterEvents.itemUse.subscribe((event) => {
     }
 });
 
+// Also open config when used on a block (right-click on block)
+if (world.afterEvents.itemUseOn) {
+    world.afterEvents.itemUseOn.subscribe((event) => {
+        if (event.itemStack && event.itemStack.typeId && event.itemStack.typeId.startsWith("smellyblox:smelly_staff_")) {
+            showMainMenu(event.source);
+        }
+    });
+}
+
+// Notify players when script is active (helps debugging whether scripts loaded)
+if (world.afterEvents.playerJoin) {
+    world.afterEvents.playerJoin.subscribe((ev) => {
+        try {
+            ev.player.sendMessage("§e[Smelly Blox] Script active.");
+        } catch (e) {
+            // ignore
+        }
+    });
+}
+
 // --- Scanner Loop ---
 
 system.runInterval(() => {
@@ -248,34 +273,110 @@ system.runInterval(() => {
         const radius = config.radius;
         const targetType = config.target;
 
-        // Scan
+        // Scan and collect matching block positions
         const dim = player.dimension;
         const pPos = player.location;
         const headPos = player.getHeadLocation();
 
-        // Naive scan (optimized: checking manhattan distance or simple loop)
+        const found = new Set(); // keys as 'x,y,z'
+
         for (let x = -radius; x <= radius; x++) {
             for (let y = -radius; y <= radius; y++) {
                 for (let z = -radius; z <= radius; z++) {
-                    const bPos = { x: Math.floor(pPos.x + x), y: Math.floor(pPos.y + y), z: Math.floor(pPos.z + z) };
-
-                    // Skip if too far (Euclidean check for circle)
                     if (x * x + y * y + z * z > radius * radius) continue;
-
+                    const pos = { x: Math.floor(pPos.x + x), y: Math.floor(pPos.y + y), z: Math.floor(pPos.z + z) };
+                    const key = `${pos.x},${pos.y},${pos.z}`;
                     try {
-                        const block = dim.getBlock(bPos);
+                        const block = dim.getBlock(pos);
                         if (block && block.typeId === targetType) {
-                            // Found block! Highlight logic.
-                            highlightBlock(dim, headPos, block.center(), particle);
+                            found.add(key);
                         }
                     } catch (e) {
-                        // ungenerated chunks etc
+                        // ignore
                     }
                 }
             }
         }
+
+        if (found.size === 0) continue;
+
+        // Group adjacent blocks (6-face connectivity) into clusters, then draw one beam per cluster
+        const groups = groupAdjacent(found);
+        for (const group of groups) {
+            // pick representative closest to head
+            let best = null;
+            let bestDist = Infinity;
+            for (const p of group) {
+                const dx = p.x - headPos.x;
+                const dy = p.y - headPos.y;
+                const dz = p.z - headPos.z;
+                const d = dx * dx + dy * dy + dz * dz;
+                if (d < bestDist) {
+                    bestDist = d;
+                    best = p;
+                }
+            }
+            if (best) highlightBeam(dim, headPos, { x: best.x + 0.5, y: best.y + 0.5, z: best.z + 0.5 }, particle);
+        }
     }
 }, SCAN_INTERVAL_TICKS);
+
+// Convert set of position keys into clusters of adjacent blocks
+function groupAdjacent(posSet) {
+    const visited = new Set();
+    const groups = [];
+
+    const parseKey = (k) => k.split(",").map(Number);
+
+    const neighbors = [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+
+    for (const key of posSet) {
+        if (visited.has(key)) continue;
+        const stack = [key];
+        visited.add(key);
+        const group = [];
+
+        while (stack.length) {
+            const cur = stack.pop();
+            const [cx, cy, cz] = parseKey(cur);
+            group.push({ x: cx, y: cy, z: cz });
+
+            for (const n of neighbors) {
+                const nk = `${cx + n[0]},${cy + n[1]},${cz + n[2]}`;
+                if (posSet.has(nk) && !visited.has(nk)) {
+                    visited.add(nk);
+                    stack.push(nk);
+                }
+            }
+        }
+
+        groups.push(group);
+    }
+
+    return groups;
+}
+
+// Draw a continuous beam of particles from start (head) to end (block center)
+function highlightBeam(dimension, start, end, particleId) {
+    const vec = { x: end.x - start.x, y: end.y - start.y, z: end.z - start.z };
+    const dist = Math.sqrt(vec.x * vec.x + vec.y * vec.y + vec.z * vec.z);
+    if (!isFinite(dist) || dist <= 0) return;
+    const dir = { x: vec.x / dist, y: vec.y / dist, z: vec.z / dist };
+
+    // Dense particles along the beam
+    const step = Math.max(0.1, dist / PARTICLES_PER_FLOW);
+    for (let i = 0; i <= dist; i += step) {
+        const pos = { x: start.x + dir.x * i, y: start.y + dir.y * i + 0.2, z: start.z + dir.z * i };
+        try {
+            dimension.spawnParticle(particleId, pos);
+        } catch (e) {
+            // ignore particle spawn errors
+        }
+    }
+
+    // small highlight at the end block
+    try { dimension.spawnParticle(particleId, end); } catch(e) {}
+}
 
 function highlightBlock(dimension, start, end, particleId) {
     // Draw flow line from start (head) to end (block)

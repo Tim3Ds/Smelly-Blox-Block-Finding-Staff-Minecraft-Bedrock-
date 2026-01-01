@@ -25,7 +25,12 @@ Craftable and dyeable staffs that change particle colors based on their type.
 - **Dynamic Particles**: Each staff color has a unique particle effect.
 - **Offhand Support**: Use the staff in your offhand while mining!
 
-![Smelly Staff Display](assets/smelly_staff_display_1767294544676.png)
+### Smelly Staff Previews
+- Red staff: ![Red Staff](assets/smelly_staff_preview_red.png)
+- Blue staff: ![Blue Staff](assets/smelly_staff_preview_blue.png)
+- Magenta staff: ![Magenta Staff](assets/smelly_staff_preview_magenta.png)
+- Green staff: ![Green Staff](assets/smelly_staff_preview_green.png)
+- Yellow staff: ![Yellow Staff](assets/smelly_staff_preview_yellow.png)
 
 ---
 
@@ -58,3 +63,9 @@ This will generate a file named `SmellyBlox(version).mcaddon` which you can open
 The scanner loop runs every 10 ticks (configurable in `main.js`) and performs a radial scan centered on the player. Particle flow is optimized to provide visual feedback without excessive lag.
 
 Developed for Minecraft Bedrock 1.21.0+.
+
+## 🔧 Dependencies & Required Setup
+- Minecraft Bedrock Edition 1.21.130 or newer (the addon targets 1.21+ APIs).
+- Enable the Script Engine / Experimental Features for the world where you install the addon. Make sure both the **Behavior Pack** and **Resource Pack** are active for the world.
+
+No external npm/python packages are required. If you want different staff colors, edit the PNGs in `RP/textures/items/` (the project ships copies of the base texture for each dye color). After editing textures, repackage with `./build.py`.
