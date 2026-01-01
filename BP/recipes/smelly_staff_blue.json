@@ -1,0 +1,28 @@
+{
+  "format_version": "1.12",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "smellyblox:smelly_staff_blue_recipe"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "D",
+      "S",
+      "S"
+    ],
+    "key": {
+      "S": {
+        "item": "minecraft:stick"
+      },
+      "D": {
+        "item": "minecraft:blue_dye"
+      }
+    },
+    "result": {
+      "item": "smellyblox:smelly_staff_blue",
+      "count": 1
+    }
+  }
+}

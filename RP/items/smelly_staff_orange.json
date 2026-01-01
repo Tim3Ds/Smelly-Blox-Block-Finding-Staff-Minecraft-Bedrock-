@@ -1,0 +1,13 @@
+{
+  "format_version": "1.10",
+  "minecraft:item": {
+    "description": {
+      "identifier": "smellyblox:smelly_staff_orange",
+      "category": "Equipment"
+    },
+    "components": {
+      "minecraft:icon": "smelly_staff_orange",
+      "minecraft:render_offsets": "handheld"
+    }
+  }
+}

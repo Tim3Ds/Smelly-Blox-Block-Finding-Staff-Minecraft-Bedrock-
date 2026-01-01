@@ -1,0 +1,54 @@
+{
+  "resource_pack_name": "smelly_blox",
+  "texture_name": "atlas.items",
+  "texture_data": {
+    "smelly_staff_white": {
+      "textures": "textures/items/poop_staff_base"
+    },
+    "smelly_staff_orange": {
+      "textures": "textures/items/poop_staff_base"
+    },
+    "smelly_staff_magenta": {
+      "textures": "textures/items/poop_staff_base"
+    },
+    "smelly_staff_light_blue": {
+      "textures": "textures/items/poop_staff_base"
+    },
+    "smelly_staff_yellow": {
+      "textures": "textures/items/poop_staff_base"
+    },
+    "smelly_staff_lime": {
+      "textures": "textures/items/poop_staff_base"
+    },
+    "smelly_staff_pink": {
+      "textures": "textures/items/poop_staff_base"
+    },
+    "smelly_staff_gray": {
+      "textures": "textures/items/poop_staff_base"
+    },
+    "smelly_staff_light_gray": {
+      "textures": "textures/items/poop_staff_base"
+    },
+    "smelly_staff_cyan": {
+      "textures": "textures/items/poop_staff_base"
+    },
+    "smelly_staff_purple": {
+      "textures": "textures/items/poop_staff_base"
+    },
+    "smelly_staff_blue": {
+      "textures": "textures/items/poop_staff_base"
+    },
+    "smelly_staff_brown": {
+      "textures": "textures/items/poop_staff_base"
+    },
+    "smelly_staff_green": {
+      "textures": "textures/items/poop_staff_base"
+    },
+    "smelly_staff_red": {
+      "textures": "textures/items/poop_staff_base"
+    },
+    "smelly_staff_black": {
+      "textures": "textures/items/poop_staff_base"
+    }
+  }
+}
