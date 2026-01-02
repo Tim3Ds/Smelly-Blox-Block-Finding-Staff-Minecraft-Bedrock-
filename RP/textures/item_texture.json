@@ -3,52 +3,52 @@
   "texture_name": "atlas.items",
   "texture_data": {
     "smelly_staff_white": {
-      "textures": "textures/items/poop_staff_base"
+      "textures": "textures/items/poop_staff_white"
     },
     "smelly_staff_orange": {
-      "textures": "textures/items/poop_staff_base"
+      "textures": "textures/items/poop_staff_orange"
     },
     "smelly_staff_magenta": {
-      "textures": "textures/items/poop_staff_base"
+      "textures": "textures/items/poop_staff_magenta"
     },
     "smelly_staff_light_blue": {
-      "textures": "textures/items/poop_staff_base"
+      "textures": "textures/items/poop_staff_light_blue"
     },
     "smelly_staff_yellow": {
-      "textures": "textures/items/poop_staff_base"
+      "textures": "textures/items/poop_staff_yellow"
     },
     "smelly_staff_lime": {
-      "textures": "textures/items/poop_staff_base"
+      "textures": "textures/items/poop_staff_lime"
     },
     "smelly_staff_pink": {
-      "textures": "textures/items/poop_staff_base"
+      "textures": "textures/items/poop_staff_pink"
     },
     "smelly_staff_gray": {
-      "textures": "textures/items/poop_staff_base"
+      "textures": "textures/items/poop_staff_gray"
     },
     "smelly_staff_light_gray": {
-      "textures": "textures/items/poop_staff_base"
+      "textures": "textures/items/poop_staff_light_gray"
     },
     "smelly_staff_cyan": {
-      "textures": "textures/items/poop_staff_base"
+      "textures": "textures/items/poop_staff_cyan"
     },
     "smelly_staff_purple": {
-      "textures": "textures/items/poop_staff_base"
+      "textures": "textures/items/poop_staff_purple"
     },
     "smelly_staff_blue": {
-      "textures": "textures/items/poop_staff_base"
+      "textures": "textures/items/poop_staff_blue"
     },
     "smelly_staff_brown": {
-      "textures": "textures/items/poop_staff_base"
+      "textures": "textures/items/poop_staff_brown"
     },
     "smelly_staff_green": {
-      "textures": "textures/items/poop_staff_base"
+      "textures": "textures/items/poop_staff_green"
     },
     "smelly_staff_red": {
-      "textures": "textures/items/poop_staff_base"
+      "textures": "textures/items/poop_staff_red"
     },
     "smelly_staff_black": {
-      "textures": "textures/items/poop_staff_base"
+      "textures": "textures/items/poop_staff_black"
     }
   }
 }

@@ -70,53 +70,59 @@ function getHoldingStaffColor(player) {
 
 async function showMainMenu(player) {
     const config = getConfig(player);
-    const form = new ActionFormData()
-        .title("Smelly Blox Scanner")
-        .body(`Status: ${config.active ? "§aActive" : "§cInactive"}\nTarget: ${config.target}`)
-        .button(config.active ? "Stop Scanning" : "Start Scanning")
-        .button("Select Target Block")
-        .button("Settings");
 
-    // Check Offhand Logic
+    // Equipment state for swap logic
     const equipment = player.getComponent("equippable");
     const offhandItem = equipment.getEquipment(EquipmentSlot.Offhand);
     const mainhandItem = equipment.getEquipment(EquipmentSlot.Mainhand);
     const isOffhandEmpty = !offhandItem || offhandItem.typeId === "minecraft:air";
-    const isHoldingStaff = mainhandItem && mainhandItem.typeId.startsWith("smellyblox:smelly_staff_");
+    const isHoldingStaff = mainhandItem && mainhandItem.typeId && mainhandItem.typeId.startsWith("smellyblox:smelly_staff_");
 
+    // Build a modal form with radius at top-level
+    let form = new ModalFormData()
+        .title("Smelly Blox Scanner")
+        .slider("Scan Radius", 1, 16, 1, config.radius)
+        .toggle(config.active ? "Scanner Active" : "Scanner Inactive", config.active)
+        .toggle("Change Target Block?", false);
+
+    // Swap control (show even if not holding staff to make intent clear)
     if (isHoldingStaff) {
-        if (isOffhandEmpty) {
-            form.button("Move Staff to Offhand");
+        form = form.toggle(isOffhandEmpty ? "Move Staff to Offhand" : "Move Staff to Offhand (Offhand Full)", false);
+    } else {
+        form = form.toggle("Move Staff to Offhand (Not Holding Staff)", false);
+    }
+
+    const res = await form.show(player);
+    if (res.canceled) return;
+
+    // formValues layout: [radius, activeToggle, changeTargetToggle, swapToggle]
+    const values = res.formValues || [];
+    const radius = values[0] || config.radius;
+    const activeToggle = !!values[1];
+    const changeTargetToggle = !!values[2];
+    const swapToggle = !!values[3];
+
+    // Apply settings
+    config.radius = radius;
+    config.active = !!activeToggle;
+
+    // Process swap if requested
+    if (swapToggle) {
+        if (isHoldingStaff && isOffhandEmpty) {
+            equipment.setEquipment(EquipmentSlot.Offhand, mainhandItem);
+            equipment.setEquipment(EquipmentSlot.Mainhand, undefined);
+            player.sendMessage("§aStaff moved to offhand.");
+        } else if (isHoldingStaff && !isOffhandEmpty) {
+            player.sendMessage("§cError: Offhand must be empty to move the staff.");
         } else {
-            // "Disabled" button visual hack or just omit/warn
-            // ActionFormData doesn't support disabled buttons, so we add a locked icon or warning text
-            form.button("§7[Locked] Offhand Full");
+            player.sendMessage("§cError: You must hold the staff in your main hand to move it.");
         }
     }
 
-    const response = await form.show(player);
-    if (response.canceled) return;
-
-    switch (response.selection) {
-        case 0: // Toggle
-            config.active = !config.active;
-            player.sendMessage(`§e[Smelly Blox] Scanner ${config.active ? "enabled" : "disabled"}.`);
-            break;
-        case 1: // Select Block
-            showFilterSelection(player);
-            break;
-        case 2: // Settings
-            showSettings(player);
-            break;
-        case 3: // Move to Offhand OR Locked
-            if (isHoldingStaff && isOffhandEmpty) {
-                equipment.setEquipment(EquipmentSlot.Offhand, mainhandItem);
-                equipment.setEquipment(EquipmentSlot.Mainhand, undefined);
-                player.sendMessage("§aStaff moved to offhand.");
-            } else if (isHoldingStaff && !isOffhandEmpty) {
-                player.sendMessage("§cError: Offhand must be empty to move the staff.");
-            }
-            break;
+    if (changeTargetToggle) {
+        showFilterSelection(player);
+    } else {
+        player.sendMessage(`§e[Smelly Blox] Settings Applied. Status: ${config.active ? "Active" : "Inactive"}. Target: ${config.target}`);
     }
 }
 
