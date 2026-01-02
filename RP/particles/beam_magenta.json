@@ -1,0 +1,12 @@
+{
+  "format_version": "1.16.0",
+  "particle": {
+    "description": {
+      "identifier": "smellyblox:beam_magenta",
+      "textures": ["textures/particles/beam_magenta"],
+      "lifetime": {"min": 5, "max": 10},
+      "size": 0.2,
+      "render_method": "billboard"
+    }
+  }
+}

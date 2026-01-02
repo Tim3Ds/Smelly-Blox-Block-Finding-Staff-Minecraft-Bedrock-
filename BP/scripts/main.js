@@ -3,26 +3,26 @@ import { ActionFormData, ModalFormData } from "@minecraft/server-ui";
 
 // --- Configuration ---
 const SCAN_INTERVAL_TICKS = 10;
-const PARTICLES_PER_FLOW = 5; // How many dots in the line
+const PARTICLES_PER_FLOW = 30; // How many dots in the line
 
 // Map staff color names to vanilla particles
 const PARTICLE_MAP = {
-    "white": "minecraft:end_rod",
-    "orange": "minecraft:lava_drip_particle", // Close enough
-    "magenta": "minecraft:heart_particle", // Pinkish
-    "light_blue": "minecraft:blue_flame_particle",
-    "yellow": "minecraft:totem_particle",
-    "lime": "minecraft:villager_happy",
-    "pink": "minecraft:heart_particle",
-    "gray": "minecraft:campfire_smoke_particle",
-    "light_gray": "minecraft:cloud_particle",
-    "cyan": "minecraft:soul_particle",
-    "purple": "minecraft:dragon_breath_trail",
-    "blue": "minecraft:water_splash_particle",
-    "brown": "minecraft:mycelium_dust_particle", // Subtle but brown-ish
-    "green": "minecraft:villager_happy",
-    "red": "minecraft:basic_flame_particle",
-    "black": "minecraft:ink_particle"
+    "white": "smellyblox:beam_white",
+    "orange": "smellyblox:beam_orange",
+    "magenta": "smellyblox:beam_magenta",
+    "light_blue": "smellyblox:beam_light_blue",
+    "yellow": "smellyblox:beam_yellow",
+    "lime": "smellyblox:beam_lime",
+    "pink": "smellyblox:beam_pink",
+    "gray": "smellyblox:beam_gray",
+    "light_gray": "smellyblox:beam_light_gray",
+    "cyan": "smellyblox:beam_cyan",
+    "purple": "smellyblox:beam_purple",
+    "blue": "smellyblox:beam_blue",
+    "brown": "smellyblox:beam_brown",
+    "green": "smellyblox:beam_green",
+    "red": "smellyblox:beam_red",
+    "black": "smellyblox:beam_black"
 };
 
 const BLOCK_CATEGORIES = {
