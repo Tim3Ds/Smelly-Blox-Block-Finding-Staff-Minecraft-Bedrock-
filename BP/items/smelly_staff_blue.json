@@ -11,6 +11,17 @@
       "minecraft:icon": {
         "texture": "smelly_staff_blue"
       },
+      "minecraft:render_offsets": {
+        "first_person": {
+          "right": { "position": [0.6, -0.5, -0.6], "rotation": [-10, 0, -10], "scale": 0.6 },
+          "left": { "position": [-0.6, -0.5, -0.6], "rotation": [-10, 0, 10], "scale": 0.6 }
+        },
+        "third_person": {
+          "right": { "position": [0.2, 0.9, -0.2], "rotation": [0, 0, 0], "scale": 0.75 },
+          "left": { "position": [-0.2, 0.9, -0.2], "rotation": [0, 0, 0], "scale": 0.75 }
+        },
+        "gui": { "position": [0, 0, 0], "scale": 1.0 }
+      },
       "minecraft:display_name": {
         "value": "item.smellyblox:smelly_staff_blue"
       },
@@ -18,6 +29,37 @@
       "minecraft:hand_equipped": true,
       "minecraft:allow_off_hand": true,
       "minecraft:item_component": true
+      },
+      "minecraft:render_offsets": {
+        "first_person": {
+          "right": {
+            "position": [0.15, 0.06, -0.06],
+            "rotation": [0, 15, 0],
+            "scale": 0.6
+          },
+          "left": {
+            "position": [-0.15, 0.06, -0.06],
+            "rotation": [0, -15, 0],
+            "scale": 0.6
+          }
+        },
+        "third_person": {
+          "first_person_right": {
+            "position": [0.28, 0.2, 0.02],
+            "rotation": [10, 0, 20],
+            "scale": 0.75
+          },
+          "first_person_left": {
+            "position": [-0.28, 0.2, 0.02],
+            "rotation": [10, 0, -20],
+            "scale": 0.75
+          }
+        },
+        "gui": {
+          "position": [0, 0, 0],
+          "rotation": [0, 0, 0],
+          "scale": 0.9
+        }
     }
   }
 }
