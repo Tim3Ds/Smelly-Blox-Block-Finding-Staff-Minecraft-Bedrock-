@@ -24,6 +24,16 @@ def bump_version():
     for module in bp_data.get("modules", []):
         module["version"] = v
 
+    # Update header name to include version (strip any existing trailing version)
+    try:
+        import re
+        base_name = bp_data["header"].get("name", "").strip()
+        # remove trailing " (x.y.z)" if present
+        base_name = re.sub(r"\s*\(\d+\.\d+\.\d+\)$", "", base_name)
+        bp_data["header"]["name"] = f"{base_name} ({new_version_str})"
+    except Exception:
+        pass
+
     with open(BP_MANIFEST, "w") as f:
         json.dump(bp_data, f, indent=2)
     
@@ -51,6 +61,14 @@ def bump_version():
                 dep["version"] = v
 
         with open(RP_MANIFEST, "w") as f:
+            # Also update RP header name to include version
+            try:
+                import re
+                rbase = rp_data["header"].get("name", "").strip()
+                rbase = re.sub(r"\s*\(\d+\.\d+\.\d+\)$", "", rbase)
+                rp_data["header"]["name"] = f"{rbase} ({new_version_str})"
+            except Exception:
+                pass
             json.dump(rp_data, f, indent=4)
             
     return new_version_str

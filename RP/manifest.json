@@ -1,13 +1,13 @@
 {
     "format_version": 2,
     "header": {
-        "name": "Smelly Blox Resources",
+        "name": "Smelly Blox Resources (1.0.14)",
         "description": "Resource pack for scanner staff",
         "uuid": "aa238472-8433-4158-9442-99882218413a",
         "version": [
             1,
             0,
-            11
+            14
         ],
         "min_engine_version": [
             1,
@@ -22,7 +22,7 @@
             "version": [
                 1,
                 0,
-                11
+                14
             ]
         }
     ],
@@ -32,7 +32,7 @@
             "version": [
                 1,
                 0,
-                11
+                14
             ]
         }
     ]

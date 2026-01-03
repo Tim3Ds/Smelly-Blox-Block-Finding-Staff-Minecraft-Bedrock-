@@ -21,7 +21,7 @@ const PARTICLE_MAP = {
     "blue": "smellyblox:beam_blue",
     "brown": "smellyblox:beam_brown",
     "green": "smellyblox:beam_green",
-    "red": "smellyblox:beam_red",
+    "red": "minecraft:basic_flame_particle",
     "black": "smellyblox:beam_black"
 };
 
@@ -37,6 +37,10 @@ const BLOCK_CATEGORIES = {
 // --- State Management ---
 // Map<string (PlayerName), { active: boolean, target: string, radius: number, filter: string }>
 const playerConfig = new Map();
+
+// Cache particle availability checks to avoid spamming
+const confirmedParticles = new Set();
+const failedParticles = new Set();
 
 function getConfig(player) {
     if (!playerConfig.has(player.name)) {
@@ -78,9 +82,19 @@ async function showMainMenu(player) {
     const isOffhandEmpty = !offhandItem || offhandItem.typeId === "minecraft:air";
     const isHoldingStaff = mainhandItem && mainhandItem.typeId && mainhandItem.typeId.startsWith("smellyblox:smelly_staff_");
 
+    // If holding a staff, check if its custom particle previously failed and reflect in the title
+    const staffColor = getHoldingStaffColor(player);
+    let titleText = "Smelly Blox Scanner";
+    if (staffColor) {
+        const pid = `smellyblox:beam_${staffColor}`;
+        if (failedParticles.has(pid)) {
+            titleText += " (particle missing)";
+        }
+    }
+
     // Build a modal form with radius at top-level
     let form = new ModalFormData()
-        .title("Smelly Blox Scanner")
+        .title(titleText)
         .slider("Scan Radius", 1, 16, 1, config.radius)
         .toggle(config.active ? "Scanner Active" : "Scanner Inactive", config.active)
         .toggle("Change Target Block?", false);
@@ -221,7 +235,7 @@ system.runInterval(() => {
                         const block = dim.getBlock(bPos);
                         if (block && block.typeId === targetType) {
                             // Found block! Highlight logic.
-                            highlightBlock(dim, headPos, block.center(), particle);
+                            highlightBlock(dim, headPos, block.center(), particle, player);
                         }
                     } catch (e) {
                         // ungenerated chunks etc
@@ -232,7 +246,7 @@ system.runInterval(() => {
     }
 }, SCAN_INTERVAL_TICKS);
 
-function highlightBlock(dimension, start, end, particleId) {
+function highlightBlock(dimension, start, end, particleId, player) {
     // Draw flow line from start (head) to end (block)
     // We only spawn a few particles along the vector
     const vec = { x: end.x - start.x, y: end.y - start.y, z: end.z - start.z };
@@ -248,7 +262,22 @@ function highlightBlock(dimension, start, end, particleId) {
     // For now, simpler static stream + end highlight
 
     // 1. Highlight the block itself (dense)
-    dimension.spawnParticle(particleId, end);
+    try {
+        dimension.spawnParticle(particleId, end);
+        // If this is the yellow custom particle, notify the player once on success
+        if (particleId.endsWith("_yellow") && !confirmedParticles.has(particleId)) {
+            confirmedParticles.add(particleId);
+            try { player.sendMessage(`§a[SmellyBlox] Custom particle available: ${particleId}`); } catch (_) { }
+        }
+    } catch (e) {
+        // mark failure once to avoid log spam
+        if (!failedParticles.has(particleId)) {
+            failedParticles.add(particleId);
+            console.warn(`[SmellyBlox] spawnParticle failed for ${particleId}: ${e}`);
+        }
+        // Fallback to a vanilla particle so the player still sees something
+        try { dimension.spawnParticle("minecraft:end_rod", end); } catch (_) { }
+    }
 
     // 2. Stream particles (randomized slightly)
     // We spawn 1 particle at a random point along the line each tick, creating a flow effect over time
@@ -259,6 +288,18 @@ function highlightBlock(dimension, start, end, particleId) {
             y: start.y + dir.y * i + 0.5, // slightly lower than head
             z: start.z + dir.z * i
         };
-        dimension.spawnParticle(particleId, pos);
+        try {
+            dimension.spawnParticle(particleId, pos);
+            if (particleId.endsWith("_yellow") && !confirmedParticles.has(particleId)) {
+                confirmedParticles.add(particleId);
+                try { player.sendMessage(`§a[SmellyBlox] Custom particle available: ${particleId}`); } catch (_) { }
+            }
+        } catch (e) {
+            if (!failedParticles.has(particleId)) {
+                failedParticles.add(particleId);
+                console.warn(`[SmellyBlox] spawnParticle failed for ${particleId}: ${e}`);
+            }
+            try { dimension.spawnParticle("minecraft:end_rod", pos); } catch (_) { }
+        }
     }
 }
