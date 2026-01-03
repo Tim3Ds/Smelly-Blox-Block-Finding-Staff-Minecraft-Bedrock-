@@ -1,4 +1,4 @@
-import { world, system, EquipmentSlot } from "@minecraft/server";
+import { world, system, EquipmentSlot, MolangVariableMap } from "@minecraft/server";
 import { ActionFormData, ModalFormData } from "@minecraft/server-ui";
 
 // --- Configuration ---
@@ -21,7 +21,7 @@ const PARTICLE_MAP = {
     "blue": "smellyblox:beam_blue",
     "brown": "smellyblox:beam_brown",
     "green": "smellyblox:beam_green",
-    "red": "minecraft:basic_flame_particle",
+    "red": "smellyblox:beam_red",
     "black": "smellyblox:beam_black"
 };
 
@@ -222,20 +222,20 @@ system.runInterval(() => {
         const pPos = player.location;
         const headPos = player.getHeadLocation();
 
-        // Naive scan (optimized: checking manhattan distance or simple loop)
+        // 1. Scan and Collect
+        const foundBlocks = [];
         for (let x = -radius; x <= radius; x++) {
             for (let y = -radius; y <= radius; y++) {
                 for (let z = -radius; z <= radius; z++) {
-                    const bPos = { x: Math.floor(pPos.x + x), y: Math.floor(pPos.y + y), z: Math.floor(pPos.z + z) };
-
-                    // Skip if too far (Euclidean check for circle)
+                    // Optimization: Euclidean check first
                     if (x * x + y * y + z * z > radius * radius) continue;
+
+                    const bPos = { x: Math.floor(pPos.x + x), y: Math.floor(pPos.y + y), z: Math.floor(pPos.z + z) };
 
                     try {
                         const block = dim.getBlock(bPos);
                         if (block && block.typeId === targetType) {
-                            // Found block! Highlight logic.
-                            highlightBlock(dim, headPos, block.center(), particle, player);
+                            foundBlocks.push({ x: bPos.x, y: bPos.y, z: bPos.z });
                         }
                     } catch (e) {
                         // ungenerated chunks etc
@@ -243,63 +243,116 @@ system.runInterval(() => {
                 }
             }
         }
+
+        if (foundBlocks.length === 0) continue;
+
+        // 2. Cluster
+        // Simple clustering: group blocks within 1.5 blocks distance (diagonals count)
+        const clusters = [];
+        const visited = new Set();
+        const getKey = (b) => `${b.x},${b.y},${b.z}`;
+
+        for (const block of foundBlocks) {
+            const key = getKey(block);
+            if (visited.has(key)) continue;
+
+            // Start new cluster
+            const cluster = [block];
+            visited.add(key);
+
+            // Queue for BFS-like expansion within this cluster
+            const queue = [block];
+
+            let idx = 0;
+            while (idx < queue.length) {
+                const current = queue[idx++];
+
+                // Check all unvisited blocks to see if they are neighbors
+                for (const potential of foundBlocks) {
+                    const pKey = getKey(potential);
+                    if (visited.has(pKey)) continue;
+
+                    const dx = current.x - potential.x;
+                    const dy = current.y - potential.y;
+                    const dz = current.z - potential.z;
+
+                    if (dx * dx + dy * dy + dz * dz <= 3) { // Adjacent
+                        visited.add(pKey);
+                        cluster.push(potential);
+                        queue.push(potential);
+                    }
+                }
+            }
+            clusters.push(cluster);
+        }
+
+        // 3. Highlight Clusters
+        for (const cluster of clusters) {
+            let sumX = 0, sumY = 0, sumZ = 0;
+            for (const b of cluster) {
+                sumX += b.x;
+                sumY += b.y;
+                sumZ += b.z;
+            }
+            const center = {
+                x: sumX / cluster.length + 0.5,
+                y: sumY / cluster.length + 0.5,
+                z: sumZ / cluster.length + 0.5
+            };
+
+            spawnFlowParticle(dim, headPos, center, particle, player);
+        }
+
     }
 }, SCAN_INTERVAL_TICKS);
 
-function highlightBlock(dimension, start, end, particleId, player) {
-    // Draw flow line from start (head) to end (block)
-    // We only spawn a few particles along the vector
-    const vec = { x: end.x - start.x, y: end.y - start.y, z: end.z - start.z };
-    const dist = Math.sqrt(vec.x * vec.x + vec.y * vec.y + vec.z * vec.z);
+function spawnFlowParticle(dimension, start, end, particleId, player) {
+    // 1. Calculate Velocity
+    // Start slightly in front of head/hand.
+    const viewDir = player.getViewDirection();
+    const spawnPos = {
+        x: start.x + viewDir.x * 0.5,
+        y: start.y + viewDir.y * 0.5 - 0.2, // slightly down
+        z: start.z + viewDir.z * 0.5
+    };
 
-    // Normalize
-    const dir = { x: vec.x / dist, y: vec.y / dist, z: vec.z / dist };
+    const vec = { x: end.x - spawnPos.x, y: end.y - spawnPos.y, z: end.z - spawnPos.z };
 
-    // Spawn points
-    let step = Math.max(1, dist / PARTICLES_PER_FLOW);
+    // Time to reach target in seconds. Lifetime is 2.0s.
+    // Let's set speed so it takes ~0.5-1.0s depending on distance?
+    // Or constant time? Constant time = varying speed. 
+    // Constant speed = varying time.
+    // User wants "flow". Constant speed looks better for stream usually.
+    // But if we want it to hit the target, we need to match lifetime.
+    // If lifetime is fixed (2.0s), and we want it to die AT the target, we need Speed = Distance / 2.0.
+    // But 2.0s is slow for close blocks.
+    // Let's aim for 1.0s travel time effectively.
 
-    // We can animate the flow: use system.currentTick to offset?
-    // For now, simpler static stream + end highlight
+    const timeToReach = 1.0;
+    const velocity = {
+        x: vec.x / timeToReach,
+        y: vec.y / timeToReach,
+        z: vec.z / timeToReach
+    };
 
-    // 1. Highlight the block itself (dense)
+    // Molang variables for velocity
+    // We need to pass these to the particle.
+    const molangVars = new MolangVariableMap();
+    molangVars.setFloat("variable.dx", velocity.x);
+    molangVars.setFloat("variable.dy", velocity.y);
+    molangVars.setFloat("variable.dz", velocity.z);
+
     try {
-        dimension.spawnParticle(particleId, end);
-        // If this is the yellow custom particle, notify the player once on success
+        dimension.spawnParticle(particleId, spawnPos, molangVars);
+
         if (particleId.endsWith("_yellow") && !confirmedParticles.has(particleId)) {
             confirmedParticles.add(particleId);
-            try { player.sendMessage(`§a[SmellyBlox] Custom particle available: ${particleId}`); } catch (_) { }
+            try { player.sendMessage(`§a[SmellyBlox] Particle flow active: ${particleId}`); } catch (_) { }
         }
     } catch (e) {
-        // mark failure once to avoid log spam
         if (!failedParticles.has(particleId)) {
             failedParticles.add(particleId);
-            console.warn(`[SmellyBlox] spawnParticle failed for ${particleId}: ${e}`);
-        }
-        // Fallback to a vanilla particle so the player still sees something
-        try { dimension.spawnParticle("minecraft:end_rod", end); } catch (_) { }
-    }
-
-    // 2. Stream particles (randomized slightly)
-    // We spawn 1 particle at a random point along the line each tick, creating a flow effect over time
-    // Or just 3 fixed points.
-    for (let i = 1; i < dist; i += step) {
-        const pos = {
-            x: start.x + dir.x * i,
-            y: start.y + dir.y * i + 0.5, // slightly lower than head
-            z: start.z + dir.z * i
-        };
-        try {
-            dimension.spawnParticle(particleId, pos);
-            if (particleId.endsWith("_yellow") && !confirmedParticles.has(particleId)) {
-                confirmedParticles.add(particleId);
-                try { player.sendMessage(`§a[SmellyBlox] Custom particle available: ${particleId}`); } catch (_) { }
-            }
-        } catch (e) {
-            if (!failedParticles.has(particleId)) {
-                failedParticles.add(particleId);
-                console.warn(`[SmellyBlox] spawnParticle failed for ${particleId}: ${e}`);
-            }
-            try { dimension.spawnParticle("minecraft:end_rod", pos); } catch (_) { }
+            console.warn(`[SmellyBlox] Failed to spawn particle ${particleId}: ${e}`);
         }
     }
 }

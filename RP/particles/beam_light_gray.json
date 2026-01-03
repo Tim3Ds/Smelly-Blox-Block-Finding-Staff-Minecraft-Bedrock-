@@ -37,12 +37,11 @@
           ]
         }
       },
-      "minecraft:particle_motion_dynamic": {
-        "linear_drag_coefficient": 0,
-        "linear_velocity": [
-          "variable.dx",
-          "variable.dy",
-          "variable.dz"
+      "minecraft:particle_motion_parametric": {
+        "relative_position": [
+          "variable.dx * variable.particle_age",
+          "variable.dy * variable.particle_age",
+          "variable.dz * variable.particle_age"
         ]
       },
       "minecraft:particle_appearance_lighting": {}
