@@ -82,48 +82,35 @@ async function showMainMenu(player) {
     const isOffhandEmpty = !offhandItem || offhandItem.typeId === "minecraft:air";
     const isHoldingStaff = mainhandItem && mainhandItem.typeId && mainhandItem.typeId.startsWith("smellyblox:smelly_staff_");
 
-    // If holding a staff, check if its custom particle previously failed and reflect in the title
-    const staffColor = getHoldingStaffColor(player);
-    let titleText = "Smelly Blox Scanner";
-    if (staffColor) {
-        const pid = `smellyblox:beam_${staffColor}`;
-        if (failedParticles.has(pid)) {
-            titleText += " (particle missing)";
-        }
-    }
-
-    // Build a modal form with radius at top-level
     // Format block name for display (remove minecraft: prefix and replace _ with spaces)
     const targetDisplayName = config.target.replace("minecraft:", "").split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 
+    // Title with target displayed
+    const title = `Smelly Blox | Target: ${targetDisplayName}`;
+
+    // Build complete form with all controls
     let form = new ModalFormData()
-        .title(titleText)
-        .slider("Scan Radius", 1, 16, 1, config.radius)
-        .toggle(`Current Target: ${targetDisplayName}`, false)
-        .toggle(config.active ? "Scanner Active" : "Scanner Inactive", config.active)
+        .title(title)
+        .slider("Range", 1, 16, 1, config.radius)
         .toggle("Change Target Block?", false);
 
-    // Swap control (show even if not holding staff to make intent clear)
-    if (isHoldingStaff) {
-        form = form.toggle(isOffhandEmpty ? "Move Staff to Offhand" : "Move Staff to Offhand (Offhand Full)", false);
-    } else {
-        form = form.toggle("Move Staff to Offhand (Not Holding Staff)", false);
-    }
+    // Swap control and Activate/Deactivate
+    form = form.toggle(isOffhandEmpty ? "Move Staff to Offhand" : "Move Staff to Offhand (Offhand Full)", false)
+        .toggle(config.active ? "Deactivate" : "Activate", config.active);
 
     const res = await form.show(player);
     if (res.canceled) return;
 
-    // formValues layout: [radius, currentTargetDummy, activeToggle, changeTargetToggle, swapToggle]
+    // formValues layout: [0] range, [1] changeTarget, [2] swap, [3] activate
     const values = res.formValues || [];
-    const radius = values[0] || config.radius;
-    // values[1] is the dummy current target toggle (ignored)
-    const activeToggle = !!values[2];
-    const changeTargetToggle = !!values[3];
-    const swapToggle = !!values[4];
+    const range = values[0] || config.radius;
+    const changeTargetToggle = !!values[1];
+    const swapToggle = !!values[2];
+    const activateToggle = !!values[3];
 
     // Apply settings
-    config.radius = radius;
-    config.active = !!activeToggle;
+    config.radius = range;
+    config.active = activateToggle;
 
     // Process swap if requested
     if (swapToggle) {
@@ -141,9 +128,10 @@ async function showMainMenu(player) {
     if (changeTargetToggle) {
         showFilterSelection(player);
     } else {
-        player.sendMessage(`§e[Smelly Blox] Settings Applied. Status: ${config.active ? "Active" : "Inactive"}. Target: ${config.target}`);
+        player.sendMessage(`§e[Smelly Blox] Settings Applied. Scanner: ${config.active ? "Active" : "Inactive"}`);
     }
 }
+
 
 async function showFilterSelection(player) {
     const config = getConfig(player);
@@ -369,28 +357,19 @@ system.runInterval(() => {
 }, SCAN_INTERVAL_TICKS);
 
 function spawnFlowParticle(dimension, start, end, particleId, player) {
-    // 1. Calculate Velocity
-    // Start slightly in front of head/hand.
+    // Spawn point: 1 space in front of player
     const viewDir = player.getViewDirection();
     const spawnPos = {
-        x: start.x + viewDir.x * 0.5,
-        y: start.y + viewDir.y * 0.5 - 0.2, // slightly down
-        z: start.z + viewDir.z * 0.5
+        x: start.x + viewDir.x * 1.0,
+        y: start.y + viewDir.y * 1.0 - 0.3,
+        z: start.z + viewDir.z * 1.0
     };
 
     const vec = { x: end.x - spawnPos.x, y: end.y - spawnPos.y, z: end.z - spawnPos.z };
 
-    // Time to reach target in seconds. Lifetime is 2.0s.
-    // Let's set speed so it takes ~0.5-1.0s depending on distance?
-    // Or constant time? Constant time = varying speed. 
-    // Constant speed = varying time.
-    // User wants "flow". Constant speed looks better for stream usually.
-    // But if we want it to hit the target, we need to match lifetime.
-    // If lifetime is fixed (2.0s), and we want it to die AT the target, we need Speed = Distance / 2.0.
-    // But 2.0s is slow for close blocks.
-    // Let's aim for 1.0s travel time effectively.
-
-    const timeToReach = 1.0;
+    // With 6s particle lifetime and 1/3 speed, use 3s travel time
+    // This gives particles time to fade/travel naturally
+    const timeToReach = 2.0;
     const velocity = {
         x: vec.x / timeToReach,
         y: vec.y / timeToReach,
@@ -398,7 +377,6 @@ function spawnFlowParticle(dimension, start, end, particleId, player) {
     };
 
     // Molang variables for velocity
-    // We need to pass these to the particle.
     const molangVars = new MolangVariableMap();
     molangVars.setFloat("variable.dx", velocity.x);
     molangVars.setFloat("variable.dy", velocity.y);
