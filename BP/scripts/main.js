@@ -3,7 +3,7 @@ import { ActionFormData, ModalFormData } from "@minecraft/server-ui";
 
 // --- Configuration ---
 const SCAN_INTERVAL_TICKS = 10;
-const PARTICLES_PER_FLOW = 30; // How many dots in the line
+const PARTICLES_PER_FLOW = 100; // How many dots in the line
 
 // Map staff color names to vanilla particles
 const PARTICLE_MAP = {
@@ -93,9 +93,13 @@ async function showMainMenu(player) {
     }
 
     // Build a modal form with radius at top-level
+    // Format block name for display (remove minecraft: prefix and replace _ with spaces)
+    const targetDisplayName = config.target.replace("minecraft:", "").split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+
     let form = new ModalFormData()
         .title(titleText)
         .slider("Scan Radius", 1, 16, 1, config.radius)
+        .toggle(`Current Target: ${targetDisplayName}`, false)
         .toggle(config.active ? "Scanner Active" : "Scanner Inactive", config.active)
         .toggle("Change Target Block?", false);
 
@@ -109,12 +113,13 @@ async function showMainMenu(player) {
     const res = await form.show(player);
     if (res.canceled) return;
 
-    // formValues layout: [radius, activeToggle, changeTargetToggle, swapToggle]
+    // formValues layout: [radius, currentTargetDummy, activeToggle, changeTargetToggle, swapToggle]
     const values = res.formValues || [];
     const radius = values[0] || config.radius;
-    const activeToggle = !!values[1];
-    const changeTargetToggle = !!values[2];
-    const swapToggle = !!values[3];
+    // values[1] is the dummy current target toggle (ignored)
+    const activeToggle = !!values[2];
+    const changeTargetToggle = !!values[3];
+    const swapToggle = !!values[4];
 
     // Apply settings
     config.radius = radius;
@@ -144,11 +149,24 @@ async function showFilterSelection(player) {
     const config = getConfig(player);
     const categories = Object.keys(BLOCK_CATEGORIES);
 
+    // Map categories to representative block icons
+    const categoryIcons = {
+        "Ores": "textures/blocks/diamond_ore",
+        "Logs": "textures/blocks/log_oak",
+        "Stones": "textures/blocks/stone",
+        "Spawners": "textures/blocks/mob_spawner",
+        "Chests": "textures/blocks/chest_front",
+        "All": "textures/blocks/grass_side_carried"
+    };
+
     const form = new ActionFormData()
         .title("Select Category")
         .body("Choose a block category to filter results.");
 
-    categories.forEach(c => form.button(c));
+    categories.forEach(c => {
+        const iconPath = categoryIcons[c] || "textures/blocks/dirt";
+        form.button(c, iconPath);
+    });
 
     const res = await form.show(player);
     if (res.canceled) return;
@@ -168,14 +186,58 @@ async function showBlockSelection(player, category) {
         blocks = [...BLOCK_CATEGORIES["Ores"], ...BLOCK_CATEGORIES["Logs"], ...BLOCK_CATEGORIES["Stones"]];
     }
 
-    const form = new ModalFormData()
+    // Map block IDs to texture paths
+    const blockIcons = {
+        // Ores
+        "minecraft:coal_ore": "textures/blocks/coal_ore",
+        "minecraft:iron_ore": "textures/blocks/iron_ore",
+        "minecraft:gold_ore": "textures/blocks/gold_ore",
+        "minecraft:diamond_ore": "textures/blocks/diamond_ore",
+        "minecraft:lapis_ore": "textures/blocks/lapis_ore",
+        "minecraft:redstone_ore": "textures/blocks/redstone_ore",
+        "minecraft:emerald_ore": "textures/blocks/emerald_ore",
+        "minecraft:copper_ore": "textures/blocks/copper_ore",
+        "minecraft:quartz_ore": "textures/blocks/quartz_ore",
+        "minecraft:nether_gold_ore": "textures/blocks/nether_gold_ore",
+        "minecraft:ancient_debris": "textures/blocks/ancient_debris_side",
+        // Logs
+        "minecraft:oak_log": "textures/blocks/log_oak",
+        "minecraft:spruce_log": "textures/blocks/log_spruce",
+        "minecraft:birch_log": "textures/blocks/log_birch",
+        "minecraft:jungle_log": "textures/blocks/log_jungle",
+        "minecraft:acacia_log": "textures/blocks/log_acacia",
+        "minecraft:dark_oak_log": "textures/blocks/log_big_oak",
+        "minecraft:mangrove_log": "textures/blocks/mangrove_log_side",
+        "minecraft:cherry_log": "textures/blocks/cherry_log_side",
+        // Stones
+        "minecraft:stone": "textures/blocks/stone",
+        "minecraft:cobblestone": "textures/blocks/cobblestone",
+        "minecraft:deepslate": "textures/blocks/deepslate",
+        "minecraft:andesite": "textures/blocks/stone_andesite",
+        "minecraft:diorite": "textures/blocks/stone_diorite",
+        "minecraft:granite": "textures/blocks/stone_granite",
+        // Spawners & Chests
+        "minecraft:mob_spawner": "textures/blocks/mob_spawner",
+        "minecraft:chest": "textures/blocks/chest_front",
+        "minecraft:ender_chest": "textures/blocks/ender_chest_front",
+        "minecraft:barrel": "textures/blocks/barrel_side",
+        "minecraft:shulker_box": "textures/blocks/shulker_top_undyed"
+    };
+
+    const form = new ActionFormData()
         .title(`Select ${category}`)
-        .dropdown("Choose Block", blocks, 0);
+        .body("Choose the block type to scan for:");
+
+    blocks.forEach(blockId => {
+        const iconPath = blockIcons[blockId] || "textures/blocks/dirt";
+        const displayName = blockId.replace("minecraft:", "").split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+        form.button(displayName, iconPath);
+    });
 
     const res = await form.show(player);
     if (res.canceled) return;
 
-    config.target = blocks[res.formValues[0]];
+    config.target = blocks[res.selection];
     player.sendMessage(`§e[Smelly Blox] Target set to: ${config.target}`);
 }
 
