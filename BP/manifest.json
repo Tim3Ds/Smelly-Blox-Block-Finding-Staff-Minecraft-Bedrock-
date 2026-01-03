@@ -1,13 +1,13 @@
 {
   "format_version": 2,
   "header": {
-    "name": "Smelly Blox Behavior (1.0.14)",
+    "name": "Smelly Blox Behavior (1.0.16)",
     "description": "Behavior pack for scanner staff",
     "uuid": "7a354f15-8463-4672-9844-48f80459325c",
     "version": [
       1,
       0,
-      14
+      16
     ],
     "min_engine_version": [
       1,
@@ -22,7 +22,7 @@
       "version": [
         1,
         0,
-        14
+        16
       ]
     },
     {
@@ -33,7 +33,7 @@
       "version": [
         1,
         0,
-        14
+        16
       ]
     }
   ],
