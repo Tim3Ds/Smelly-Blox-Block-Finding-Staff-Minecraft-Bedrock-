@@ -3,8 +3,8 @@ import json
 import zipfile
 import os
 
-BP_MANIFEST = "BP/manifest.json"
-RP_MANIFEST = "RP/manifest.json"
+BP_MANIFEST = "SmellyBlox_BP/manifest.json"
+RP_MANIFEST = "SmellyBlox_RP/manifest.json"
 
 def bump_version():
     """Increments the patch version in BP and syncs it to RP."""
@@ -84,12 +84,12 @@ def build():
     
     with zipfile.ZipFile(filename, "w", zipfile.ZIP_DEFLATED) as addon:
         # Add BP
-        for root, dirs, files in os.walk("BP"):
+        for root, dirs, files in os.walk("SmellyBlox_BP"):
             for file in files:
                 addon.write(os.path.join(root, file))
         
         # Add RP
-        for root, dirs, files in os.walk("RP"):
+        for root, dirs, files in os.walk("SmellyBlox_RP"):
             for file in files:
                 addon.write(os.path.join(root, file))
     

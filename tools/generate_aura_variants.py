@@ -31,8 +31,8 @@ colors = {
     'black': (30,30,30)
 }
 
-BASE = os.path.join('RP','textures','items','poop_staff_base.png')
-OUTDIR = os.path.join('RP','textures','items')
+BASE = os.path.join('SmellyBlox_RP','textures','items','poop_staff_base.png')
+OUTDIR = os.path.join('SmellyBlox_RP','textures','items')
 os.makedirs(OUTDIR, exist_ok=True)
 
 def is_halo_pixel(r,g,b):

@@ -3,7 +3,7 @@ import os
 
 # Paths
 base_image_path = "/home/tim/.gemini/antigravity/brain/8f2616e9-16b3-4887-bb4b-0e714c4019a7/uploaded_image_1767471496973.png"
-output_dir = "/mnt/z/Minecraft/SmellyBlox/RP/textures/particles"
+output_dir = "/mnt/z/Minecraft/SmellyBlox/SmellyBlox_RP/textures/particles"
 
 # Color definitions (RGB values for each Minecraft color)
 colors = {

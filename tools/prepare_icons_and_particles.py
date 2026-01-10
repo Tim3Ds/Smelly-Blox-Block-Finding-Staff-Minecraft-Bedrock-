@@ -5,7 +5,7 @@ Prepare staff icons and particle textures.
 Actions:
 - Normalize transparency (alpha threshold) and create 64x64 icons for item textures.
 - Generate small particle sprite textures for each dye color.
-- Write simple particle JSON files under RP/particles/ for each color.
+- Write simple particle JSON files under SmellyBlox_RP/particles/ for each color.
 
 Run from repo root: python3 tools/prepare_icons_and_particles.py
 Requires Pillow and numpy (already available).
@@ -13,9 +13,9 @@ Requires Pillow and numpy (already available).
 from PIL import Image, ImageDraw, ImageFilter
 import os
 colors=['white','orange','magenta','light_blue','yellow','lime','pink','gray','light_gray','cyan','purple','blue','brown','green','red','black']
-base_dir=os.path.join('RP','textures','items')
-particles_dir=os.path.join('RP','textures','particles')
-particles_json_dir=os.path.join('RP','particles')
+base_dir=os.path.join('SmellyBlox_RP','textures','items')
+particles_dir=os.path.join('SmellyBlox_RP','textures','particles')
+particles_json_dir=os.path.join('SmellyBlox_RP','particles')
 os.makedirs(particles_dir, exist_ok=True)
 os.makedirs(particles_json_dir, exist_ok=True)
 
