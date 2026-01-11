@@ -25,6 +25,37 @@ const PARTICLE_MAP = {
     "black": "smellyblox:beam_black"
 };
 
+// Map ores to their variants (regular + deepslate)
+const ORE_VARIANTS = {
+    // Ores with deepslate variants
+    "minecraft:coal_ore": ["minecraft:coal_ore", "minecraft:deepslate_coal_ore"],
+    "minecraft:iron_ore": ["minecraft:iron_ore", "minecraft:deepslate_iron_ore"],
+    "minecraft:gold_ore": ["minecraft:gold_ore", "minecraft:deepslate_gold_ore"],
+    "minecraft:diamond_ore": ["minecraft:diamond_ore", "minecraft:deepslate_diamond_ore"],
+    "minecraft:lapis_ore": ["minecraft:lapis_ore", "minecraft:deepslate_lapis_ore"],
+    "minecraft:redstone_ore": ["minecraft:redstone_ore", "minecraft:deepslate_redstone_ore"],
+    "minecraft:emerald_ore": ["minecraft:emerald_ore", "minecraft:deepslate_emerald_ore"],
+    "minecraft:copper_ore": ["minecraft:copper_ore", "minecraft:deepslate_copper_ore"],
+
+    // Sand variants
+    "minecraft:sand": ["minecraft:sand", "minecraft:red_sand"],
+
+    // Dirt/Grass variants (useful for terraforming/building)
+    "minecraft:dirt": ["minecraft:dirt", "minecraft:grass_block", "minecraft:coarse_dirt", "minecraft:rooted_dirt"],
+    "minecraft:grass_block": ["minecraft:dirt", "minecraft:grass_block", "minecraft:coarse_dirt"],
+
+    // Ice variants
+    "minecraft:ice": ["minecraft:ice", "minecraft:packed_ice", "minecraft:blue_ice"],
+    "minecraft:packed_ice": ["minecraft:ice", "minecraft:packed_ice", "minecraft:blue_ice"],
+    "minecraft:blue_ice": ["minecraft:ice", "minecraft:packed_ice", "minecraft:blue_ice"],
+
+    // Blackstone variants (Nether ore-like)
+    "minecraft:blackstone": ["minecraft:blackstone", "minecraft:gilded_blackstone"],
+
+    // Basalt variants
+    "minecraft:basalt": ["minecraft:basalt", "minecraft:polished_basalt", "minecraft:smooth_basalt"]
+};
+
 const BLOCK_CATEGORIES = {
     "Ores": ["minecraft:coal_ore", "minecraft:iron_ore", "minecraft:gold_ore", "minecraft:diamond_ore", "minecraft:lapis_ore", "minecraft:redstone_ore", "minecraft:emerald_ore", "minecraft:copper_ore", "minecraft:quartz_ore", "minecraft:nether_gold_ore", "minecraft:ancient_debris"],
     "Logs": ["minecraft:oak_log", "minecraft:spruce_log", "minecraft:birch_log", "minecraft:jungle_log", "minecraft:acacia_log", "minecraft:dark_oak_log", "minecraft:mangrove_log", "minecraft:cherry_log"],
@@ -320,7 +351,9 @@ system.runInterval(() => {
 
                     try {
                         const block = dim.getBlock(bPos);
-                        if (block && block.typeId === targetType) {
+                        // Check if block matches target or any of its variants
+                        const variants = ORE_VARIANTS[targetType] || [targetType];
+                        if (block && variants.includes(block.typeId)) {
                             foundBlocks.push({ x: bPos.x, y: bPos.y, z: bPos.z });
                         }
                     } catch (e) {
