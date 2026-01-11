@@ -49,6 +49,54 @@
     },
     "smelly_staff_black": {
       "textures": "textures/items/poop_staff_black"
+    },
+    "smelly_staff_white_glow": {
+      "textures": "textures/items/poop_staff_white_glow"
+    },
+    "smelly_staff_orange_glow": {
+      "textures": "textures/items/poop_staff_orange_glow"
+    },
+    "smelly_staff_magenta_glow": {
+      "textures": "textures/items/poop_staff_magenta_glow"
+    },
+    "smelly_staff_light_blue_glow": {
+      "textures": "textures/items/poop_staff_light_blue_glow"
+    },
+    "smelly_staff_yellow_glow": {
+      "textures": "textures/items/poop_staff_yellow_glow"
+    },
+    "smelly_staff_lime_glow": {
+      "textures": "textures/items/poop_staff_lime_glow"
+    },
+    "smelly_staff_pink_glow": {
+      "textures": "textures/items/poop_staff_pink_glow"
+    },
+    "smelly_staff_gray_glow": {
+      "textures": "textures/items/poop_staff_gray_glow"
+    },
+    "smelly_staff_light_gray_glow": {
+      "textures": "textures/items/poop_staff_light_gray_glow"
+    },
+    "smelly_staff_cyan_glow": {
+      "textures": "textures/items/poop_staff_cyan_glow"
+    },
+    "smelly_staff_purple_glow": {
+      "textures": "textures/items/poop_staff_purple_glow"
+    },
+    "smelly_staff_blue_glow": {
+      "textures": "textures/items/poop_staff_blue_glow"
+    },
+    "smelly_staff_brown_glow": {
+      "textures": "textures/items/poop_staff_brown_glow"
+    },
+    "smelly_staff_green_glow": {
+      "textures": "textures/items/poop_staff_green_glow"
+    },
+    "smelly_staff_red_glow": {
+      "textures": "textures/items/poop_staff_red_glow"
+    },
+    "smelly_staff_black_glow": {
+      "textures": "textures/items/poop_staff_black_glow"
     }
   }
 }

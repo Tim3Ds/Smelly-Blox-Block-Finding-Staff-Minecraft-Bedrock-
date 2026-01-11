@@ -1,4 +1,4 @@
-import { world, system, EquipmentSlot, MolangVariableMap } from "@minecraft/server";
+import { world, system, EquipmentSlot, MolangVariableMap, ItemStack } from "@minecraft/server";
 import { ActionFormData, ModalFormData } from "@minecraft/server-ui";
 
 // --- Configuration ---
@@ -38,6 +38,9 @@ const BLOCK_CATEGORIES = {
 // Map<string (PlayerName), { active: boolean, target: string, radius: number, filter: string }>
 const playerConfig = new Map();
 
+// Track whether blocks were detected last scan (for glow state transitions)
+const playerDetectionState = new Map();
+
 // Cache particle availability checks to avoid spamming
 const confirmedParticles = new Set();
 const failedParticles = new Set();
@@ -62,12 +65,45 @@ function getHoldingStaffColor(player) {
 
     const check = (item) => {
         if (item && item.typeId.startsWith("smellyblox:smelly_staff_")) {
-            return item.typeId.replace("smellyblox:smelly_staff_", "");
+            // Remove prefix and _glow suffix to get base color
+            return item.typeId
+                .replace("smellyblox:smelly_staff_", "")
+                .replace("_glow", "");
         }
         return null;
     };
 
     return check(main) || check(off);
+}
+
+function updateStaffGlow(player, shouldGlow) {
+    // Update staff to glowing or normal variant based on detection state
+    const equipment = player.getComponent("equippable");
+    const main = equipment.getEquipment(EquipmentSlot.Mainhand);
+    const off = equipment.getEquipment(EquipmentSlot.Offhand);
+
+    // Helper to swap item if it's a staff
+    const swapStaff = (item, slot) => {
+        if (!item?.typeId?.startsWith("smellyblox:smelly_staff_")) return;
+
+        // Extract color from current item (remove both prefix and _glow suffix if present)
+        const color = item.typeId
+            .replace("smellyblox:smelly_staff_", "")
+            .replace("_glow", "");
+
+        // Build new item ID
+        const newId = `smellyblox:smelly_staff_${color}${shouldGlow ? "_glow" : ""}`;
+
+        // Only update if different
+        if (item.typeId !== newId) {
+            const newItem = new ItemStack(newId, 1);
+            equipment.setEquipment(slot, newItem);
+        }
+    };
+
+    // Check and update both hands
+    swapStaff(main, EquipmentSlot.Mainhand);
+    swapStaff(off, EquipmentSlot.Offhand);
 }
 
 // --- UI System ---
@@ -294,9 +330,19 @@ system.runInterval(() => {
             }
         }
 
+        // 2. Update staff glow based on detection
+        const hasBlocks = foundBlocks.length > 0;
+        const prevState = playerDetectionState.get(player.name) || false;
+
+        // Only update glow if state changed (to reduce unnecessary updates)
+        if (hasBlocks !== prevState) {
+            updateStaffGlow(player, hasBlocks);
+            playerDetectionState.set(player.name, hasBlocks);
+        }
+
         if (foundBlocks.length === 0) continue;
 
-        // 2. Cluster
+        // 3. Cluster
         // Simple clustering: group blocks within 1.5 blocks distance (diagonals count)
         const clusters = [];
         const visited = new Set();
@@ -336,7 +382,7 @@ system.runInterval(() => {
             clusters.push(cluster);
         }
 
-        // 3. Highlight Clusters
+        // 4. Highlight Clusters
         for (const cluster of clusters) {
             let sumX = 0, sumY = 0, sumZ = 0;
             for (const b of cluster) {

@@ -1,0 +1,90 @@
+{
+  "format_version": "1.20.50",
+  "minecraft:item": {
+    "description": {
+      "identifier": "smellyblox:smelly_staff_lime_glow",
+      "menu_category": {
+        "category": "equipment"
+      }
+    },
+    "components": {
+      "minecraft:icon": {
+        "texture": "smelly_staff_lime_glow"
+      },
+      "minecraft:render_offsets": {
+        "first_person": {
+          "right": {
+            "position": [
+              0.6,
+              -0.5,
+              -0.6
+            ],
+            "rotation": [
+              -10,
+              0,
+              -10
+            ],
+            "scale": 0.6
+          },
+          "left": {
+            "position": [
+              -0.6,
+              -0.5,
+              -0.6
+            ],
+            "rotation": [
+              -10,
+              0,
+              10
+            ],
+            "scale": 0.6
+          }
+        },
+        "third_person": {
+          "right": {
+            "position": [
+              0.2,
+              0.9,
+              -0.2
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": 0.75
+          },
+          "left": {
+            "position": [
+              -0.2,
+              0.9,
+              -0.2
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "scale": 0.75
+          }
+        },
+        "gui": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "scale": 1.0
+        }
+      },
+      "minecraft:display_name": {
+        "value": "item.smellyblox:smelly_staff_lime_glow"
+      },
+      "minecraft:max_stack_size": 1,
+      "minecraft:hand_equipped": true,
+      "minecraft:allow_off_hand": true,
+      "minecraft:light_emission": 10,
+      "minecraft:item_component": true
+    }
+  }
+}
