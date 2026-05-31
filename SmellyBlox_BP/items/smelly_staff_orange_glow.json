@@ -74,7 +74,7 @@
             0,
             0
           ],
-          "scale": 1.0
+          "scale": 1
         }
       },
       "minecraft:display_name": {
@@ -83,8 +83,7 @@
       "minecraft:max_stack_size": 1,
       "minecraft:hand_equipped": true,
       "minecraft:allow_off_hand": true,
-      "minecraft:light_emission": 10,
-      "minecraft:item_component": true
+      "minecraft:light_emission": 10
     }
   }
 }

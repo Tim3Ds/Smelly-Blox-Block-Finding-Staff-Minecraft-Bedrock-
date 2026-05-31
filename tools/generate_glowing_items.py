@@ -46,8 +46,7 @@ def create_bp_item(color):
                 "minecraft:max_stack_size": 1,
                 "minecraft:hand_equipped": True,
                 "minecraft:allow_off_hand": True,
-                "minecraft:light_emission": 10,
-                "minecraft:item_component": True
+                "minecraft:light_emission": 10
             }
         }
     }

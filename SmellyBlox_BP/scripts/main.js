@@ -72,6 +72,9 @@ const playerConfig = new Map();
 // Track whether blocks were detected last scan (for glow state transitions)
 const playerDetectionState = new Map();
 
+// Cache scan results to avoid repeated getBlocks/clustering calls
+const playerScanCache = new Map();
+
 // Cache particle availability checks to avoid spamming
 const confirmedParticles = new Set();
 const failedParticles = new Set();
@@ -90,7 +93,7 @@ function getConfig(player) {
 
 // --- Utils ---
 function getHoldingStaffColor(player) {
-    const equipment = player.getComponent("equippable");
+    const equipment = player.getComponent("minecraft:equippable");
     const main = equipment.getEquipment(EquipmentSlot.Mainhand);
     const off = equipment.getEquipment(EquipmentSlot.Offhand);
 
@@ -109,7 +112,7 @@ function getHoldingStaffColor(player) {
 
 function updateStaffGlow(player, shouldGlow) {
     // Update staff to glowing or normal variant based on detection state
-    const equipment = player.getComponent("equippable");
+    const equipment = player.getComponent("minecraft:equippable");
     const main = equipment.getEquipment(EquipmentSlot.Mainhand);
     const off = equipment.getEquipment(EquipmentSlot.Offhand);
 
@@ -143,7 +146,7 @@ async function showMainMenu(player) {
     const config = getConfig(player);
 
     // Equipment state for swap logic
-    const equipment = player.getComponent("equippable");
+    const equipment = player.getComponent("minecraft:equippable");
     const offhandItem = equipment.getEquipment(EquipmentSlot.Offhand);
     const mainhandItem = equipment.getEquipment(EquipmentSlot.Mainhand);
     const isOffhandEmpty = !offhandItem || offhandItem.typeId === "minecraft:air";
@@ -155,10 +158,14 @@ async function showMainMenu(player) {
     // Title with target displayed
     const title = `Smelly Blox | Target: ${targetDisplayName}`;
 
+    // Allow long-range search (up to 128 blocks) for spawners using native C++ APIs
+    const maxRadius = config.filter === "Spawners" ? 128 : 16;
+    const currentRadius = Math.min(config.radius, maxRadius);
+
     // Build complete form with all controls
     let form = new ModalFormData()
         .title(title)
-        .slider("Range", 1, 16, 1, config.radius)
+        .slider("Range", 1, maxRadius, 1, currentRadius)
         .toggle("Change Target Block?", false);
 
     // Swap control and Activate/Deactivate
@@ -339,97 +346,191 @@ system.runInterval(() => {
         const pPos = player.location;
         const headPos = player.getHeadLocation();
 
-        // 1. Scan and Collect
-        const foundBlocks = [];
-        for (let x = -radius; x <= radius; x++) {
-            for (let y = -radius; y <= radius; y++) {
-                for (let z = -radius; z <= radius; z++) {
-                    // Optimization: Euclidean check first
-                    if (x * x + y * y + z * z > radius * radius) continue;
+        // 1. Check scan cache
+        let cache = playerScanCache.get(player.name);
+        let needsScan = !cache || cache.lastTarget !== targetType || cache.lastRadius !== radius;
 
-                    const bPos = { x: Math.floor(pPos.x + x), y: Math.floor(pPos.y + y), z: Math.floor(pPos.z + z) };
+        if (cache && !needsScan) {
+            const dx = pPos.x - cache.lastScanPos.x;
+            const dy = pPos.y - cache.lastScanPos.y;
+            const dz = pPos.z - cache.lastScanPos.z;
+            const distMoved = Math.sqrt(dx * dx + dy * dy + dz * dz);
+            
+            // Only re-scan if user has moved appreciable amount (30% of distance to target, min 3 blocks)
+            const threshold = Math.max(3, 0.3 * (cache.lastClosestDist ?? radius));
+            if (distMoved >= threshold) {
+                needsScan = true;
+            }
+        }
 
-                    try {
-                        const block = dim.getBlock(bPos);
-                        // Check if block matches target or any of its variants
-                        const variants = ORE_VARIANTS[targetType] || [targetType];
-                        if (block && variants.includes(block.typeId)) {
-                            foundBlocks.push({ x: bPos.x, y: bPos.y, z: bPos.z });
+        let clusters = [];
+
+        if (needsScan) {
+            // Scan and Collect using native C++ Dimension.getBlocks for high performance
+            const foundBlocks = [];
+            const variants = ORE_VARIANTS[targetType] || [targetType];
+            
+            try {
+                const minX = Math.floor(pPos.x - radius);
+                const minY = Math.floor(pPos.y - radius);
+                const minZ = Math.floor(pPos.z - radius);
+                const maxX = Math.floor(pPos.x + radius);
+                const maxY = Math.floor(pPos.y + radius);
+                const maxZ = Math.floor(pPos.z + radius);
+
+                const volume = {
+                    min: { x: minX, y: minY, z: minZ },
+                    max: { x: maxX, y: maxY, z: maxZ }
+                };
+                const filter = {
+                    includeTypes: variants
+                };
+                
+                // Get all matching blocks in the volume (natively, extremely fast)
+                const blockVolume = dim.getBlocks(volume, filter, true);
+                const iterator = blockVolume.getBlockLocationIterator();
+                
+                for (const bPos of iterator) {
+                    // Euclidean distance check to maintain circular radius
+                    const dx = bPos.x - pPos.x;
+                    const dy = bPos.y - pPos.y;
+                    const dz = bPos.z - pPos.z;
+                    if (dx * dx + dy * dy + dz * dz <= radius * radius) {
+                        foundBlocks.push({ x: bPos.x, y: bPos.y, z: bPos.z });
+                    }
+                }
+            } catch (e) {
+                // Fallback to manual scanning loop if getBlocks is not available or fails
+                for (let x = -radius; x <= radius; x++) {
+                    for (let y = -radius; y <= radius; y++) {
+                        for (let z = -radius; z <= radius; z++) {
+                            if (x * x + y * y + z * z > radius * radius) continue;
+                            const bPos = { x: Math.floor(pPos.x + x), y: Math.floor(pPos.y + y), z: Math.floor(pPos.z + z) };
+                            try {
+                                const block = dim.getBlock(bPos);
+                                if (block && variants.includes(block.typeId)) {
+                                    foundBlocks.push({ x: bPos.x, y: bPos.y, z: bPos.z });
+                                }
+                            } catch (_) {}
                         }
-                    } catch (e) {
-                        // ungenerated chunks etc
                     }
                 }
             }
-        }
 
-        // 2. Update staff glow based on detection
-        const hasBlocks = foundBlocks.length > 0;
-        const prevState = playerDetectionState.get(player.name) || false;
+            // 2. Update staff glow based on detection
+            const hasBlocks = foundBlocks.length > 0;
+            const prevState = playerDetectionState.get(player.name) || false;
 
-        // Only update glow if state changed (to reduce unnecessary updates)
-        if (hasBlocks !== prevState) {
-            updateStaffGlow(player, hasBlocks);
-            playerDetectionState.set(player.name, hasBlocks);
-        }
+            // Only update glow if state changed (to reduce unnecessary updates)
+            if (hasBlocks !== prevState) {
+                updateStaffGlow(player, hasBlocks);
+                playerDetectionState.set(player.name, hasBlocks);
+            }
 
-        if (foundBlocks.length === 0) continue;
+            // 3. Cluster
+            // Simple clustering: group blocks within 1.5 blocks distance (diagonals count)
+            const rawClusters = [];
+            const visited = new Set();
+            const getKey = (b) => `${b.x},${b.y},${b.z}`;
 
-        // 3. Cluster
-        // Simple clustering: group blocks within 1.5 blocks distance (diagonals count)
-        const clusters = [];
-        const visited = new Set();
-        const getKey = (b) => `${b.x},${b.y},${b.z}`;
+            for (const block of foundBlocks) {
+                const key = getKey(block);
+                if (visited.has(key)) continue;
 
-        for (const block of foundBlocks) {
-            const key = getKey(block);
-            if (visited.has(key)) continue;
+                // Start new cluster
+                const cluster = [block];
+                visited.add(key);
 
-            // Start new cluster
-            const cluster = [block];
-            visited.add(key);
+                // Queue for BFS-like expansion within this cluster
+                const queue = [block];
 
-            // Queue for BFS-like expansion within this cluster
-            const queue = [block];
+                let idx = 0;
+                while (idx < queue.length) {
+                    const current = queue[idx++];
 
-            let idx = 0;
-            while (idx < queue.length) {
-                const current = queue[idx++];
+                    // Check all unvisited blocks to see if they are neighbors
+                    for (const potential of foundBlocks) {
+                        const pKey = getKey(potential);
+                        if (visited.has(pKey)) continue;
 
-                // Check all unvisited blocks to see if they are neighbors
-                for (const potential of foundBlocks) {
-                    const pKey = getKey(potential);
-                    if (visited.has(pKey)) continue;
+                        const dx = current.x - potential.x;
+                        const dy = current.y - potential.y;
+                        const dz = current.z - potential.z;
 
-                    const dx = current.x - potential.x;
-                    const dy = current.y - potential.y;
-                    const dz = current.z - potential.z;
-
-                    if (dx * dx + dy * dy + dz * dz <= 3) { // Adjacent
-                        visited.add(pKey);
-                        cluster.push(potential);
-                        queue.push(potential);
+                        if (dx * dx + dy * dy + dz * dz <= 3) { // Adjacent
+                            visited.add(pKey);
+                            cluster.push(potential);
+                            queue.push(potential);
+                        }
                     }
                 }
+                rawClusters.push(cluster);
             }
-            clusters.push(cluster);
+
+            // Calculate absolute centers
+            clusters = rawClusters.map(cluster => {
+                let sumX = 0, sumY = 0, sumZ = 0;
+                for (const b of cluster) {
+                    sumX += b.x;
+                    sumY += b.y;
+                    sumZ += b.z;
+                }
+                return {
+                    center: {
+                        x: sumX / cluster.length + 0.5,
+                        y: sumY / cluster.length + 0.5,
+                        z: sumZ / cluster.length + 0.5
+                    }
+                };
+            });
+
+            // Find distance to closest target
+            let closestDist = undefined;
+            if (clusters.length > 0) {
+                let minSq = Infinity;
+                for (const c of clusters) {
+                    const dx = c.center.x - pPos.x;
+                    const dy = c.center.y - pPos.y;
+                    const dz = c.center.z - pPos.z;
+                    const distSq = dx * dx + dy * dy + dz * dz;
+                    if (distSq < minSq) {
+                        minSq = distSq;
+                    }
+                }
+                closestDist = Math.sqrt(minSq);
+            }
+
+            // Update cache
+            playerScanCache.set(player.name, {
+                lastScanPos: { x: pPos.x, y: pPos.y, z: pPos.z },
+                lastScanClusters: clusters,
+                lastClosestDist: closestDist,
+                lastTarget: targetType,
+                lastRadius: radius
+            });
+        } else {
+            clusters = cache.lastScanClusters;
         }
 
-        // 4. Highlight Clusters
-        for (const cluster of clusters) {
-            let sumX = 0, sumY = 0, sumZ = 0;
-            for (const b of cluster) {
-                sumX += b.x;
-                sumY += b.y;
-                sumZ += b.z;
-            }
-            const center = {
-                x: sumX / cluster.length + 0.5,
-                y: sumY / cluster.length + 0.5,
-                z: sumZ / cluster.length + 0.5
-            };
+        if (clusters.length === 0) continue;
 
-            spawnFlowParticle(dim, headPos, center, particle, player);
+        // 4. Highlight Clusters (closest and next closest only for Spawners; all for others like iron)
+        const clustersWithDistance = clusters.map(c => {
+            const dx = c.center.x - headPos.x;
+            const dy = c.center.y - headPos.y;
+            const dz = c.center.z - headPos.z;
+            const distanceSq = dx * dx + dy * dy + dz * dz;
+            return { center: c.center, distanceSq };
+        });
+
+        // Sort clusters by distance (ascending)
+        clustersWithDistance.sort((a, b) => a.distanceSq - b.distanceSq);
+
+        // Point only at closest/next closest (top 2) for Spawners; all for others
+        const targetsToShow = config.filter === "Spawners" ? clustersWithDistance.slice(0, 2) : clustersWithDistance;
+
+        for (const target of targetsToShow) {
+            spawnFlowParticle(dim, headPos, target.center, particle, player);
         }
 
     }
